@@ -1,0 +1,51 @@
+$bog_call_host $mol_view
+	peer null
+	store null
+	on_back? null
+	on_connected? null
+	frames_share /string
+	scan_status \
+	scan_error \
+	manual_visible? false
+	manual_text? \
+	toggle_manual? null
+	apply_manual? null
+	on_scan_decode? \
+	sub /
+		<= Header $mol_view
+			sub /
+				<= Back $mol_button_minor
+					click? <=> on_back?
+					sub /
+						<= back_label @ \Назад
+				<= Title $mol_view
+					sub /
+						<= title @ \Звонок: ваш QR
+		<= Body $mol_view
+			sub /
+				<= Show $bog_call_qr_show
+					frames <= frames_share
+				<= Step_label $mol_view
+					sub /
+						<= step_label @ \Теперь сканируйте QR гостя
+				<= Scanner $bog_call_qr_scan
+					on_decode <=> on_scan_decode?
+				<= Status $mol_view
+					sub /
+						<= scan_status
+				<= Error $mol_view
+					sub /
+						<= scan_error
+				<= Manual_toggle $mol_button_minor
+					click? <=> toggle_manual?
+					sub /
+						<= manual_label @ \Ввести вручную
+				<= Manual $mol_view
+					sub /
+						<= Manual_input $mol_textarea
+							hint @ \Вставьте текст QR гостя
+							value? <=> manual_text?
+						<= Apply $mol_button_major
+							click? <=> apply_manual?
+							sub /
+								<= apply_label @ \Применить

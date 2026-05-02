@@ -1,0 +1,29 @@
+$bog_call_active $mol_view
+	peer null
+	on_hangup? null
+	hangup? null
+	mute? false
+	connection_label \
+	quality_label \
+	auto /
+		<= wake null
+	sub /
+		<= Indicator $mol_view
+			attr *
+				^
+				quality <= quality \good
+			sub /
+				<= indicator_label \●
+		<= Status $mol_view
+			sub /
+				<= connection_label
+		<= Quality $mol_view
+			sub /
+				<= quality_label
+		<= Mute $mol_check
+			title @ \Микрофон выключен
+			checked? <=> mute?
+		<= Hangup $mol_button_major
+			click? <=> hangup?
+			sub /
+				<= hangup_label @ \Завершить

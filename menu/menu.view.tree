@@ -1,0 +1,29 @@
+$bog_call_menu $mol_view
+	host_click? null
+	guest_click? null
+	name? \
+	sub /
+		<= Title $mol_view
+			sub /
+				<= title @ \Локальный звонок
+		<= Lead $mol_view
+			sub /
+				<= lead @ \Голос по локальной сети без интернета и сервера. Обмен через QR-коды.
+		<= Form $mol_view
+			sub /
+				<= Name_field $mol_string
+					hint @ \Ваше имя
+					value? <=> name?
+		<= Buttons $mol_view
+			sub /
+				<= Host_btn $mol_button_major
+					click? <=> host_click?
+					sub /
+						<= host_label @ \Создать звонок
+				<= Guest_btn $mol_button_minor
+					click? <=> guest_click?
+					sub /
+						<= guest_label @ \Присоединиться
+		<= Hint $mol_view
+			sub /
+				<= hint @ \Подключите оба телефона к одному Wi-Fi (хотспоту). Интернет не нужен.

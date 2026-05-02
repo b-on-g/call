@@ -1,0 +1,38 @@
+$bog_call_app $mol_page
+	title @ \Локальный звонок
+	name? \
+	open_host? null
+	open_guest? null
+	goto_home? null
+	goto_active? null
+	tools /
+		<= Sources $mol_link_source
+			uri \https://github.com/bog/call
+		<= Status $giper_baza_status
+		<= Theme_toggle $bog_theme_toggle
+			theme_auto <= Theme
+	plugins /
+		<= Theme $bog_theme_auto
+			theme_light \$mol_theme_calm_light
+			theme_dark \$mol_theme_calm_dark
+			themes /
+				\$mol_theme_calm_light
+				\$mol_theme_calm_dark
+	body <= screen_body /
+	Menu $bog_call_menu
+		name? <=> name?
+		host_click? <=> open_host? null
+		guest_click? <=> open_guest? null
+	Host $bog_call_host
+		peer <= peer null
+		store <= store null
+		on_back? <=> goto_home? null
+		on_connected? <=> goto_active? null
+	Guest $bog_call_guest
+		peer <= peer
+		store <= store
+		on_back? <=> goto_home?
+		on_connected? <=> goto_active?
+	Active $bog_call_active
+		peer <= peer
+		on_hangup? <=> goto_home?

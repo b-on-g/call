@@ -1,0 +1,15 @@
+$bog_call_qr_scan $mol_view
+	on_decode? null
+	scanning true
+	sub /
+		<= Video $mol_view
+			dom_name \video
+			attr *
+				autoplay true
+				playsinline true
+				muted true
+			field *
+				srcObject <= stream null
+		<= Hint $mol_view
+			sub /
+				<= hint @ \Наведите на QR-код

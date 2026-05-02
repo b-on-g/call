@@ -1,0 +1,16 @@
+$bog_call_qr_show $mol_view
+	frames /string
+	interval 1800
+	frame_index 0
+	sub /
+		<= Frame $bog_qr
+			uri <= current_frame \
+			error_correction \M
+			module_radius 0.35
+			gradient_angle 135
+			gradient_stops /
+				\var(--mol_theme_special)
+				\var(--mol_theme_focus)
+		<= Status $mol_view
+			sub /
+				<= status_text \
