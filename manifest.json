@@ -1,0 +1,26 @@
+{
+	"name": "Локальный звонок",
+	"short_name": "Call",
+	"description": "P2P голосовая связь по локальной сети без сервера. Сигналинг через QR-коды.",
+	"id": "bog_call_app",
+	"start_url": ".",
+	"display": "standalone",
+	"background_color": "#0f0e17",
+	"theme_color": "#7c3aed",
+	"scope": ".",
+	"orientation": "portrait",
+	"icons": [
+		{
+			"src": "bog/call/assets/logo.svg",
+			"type": "image/svg+xml",
+			"sizes": "any",
+			"purpose": "any"
+		},
+		{
+			"src": "bog/call/assets/logo.svg",
+			"type": "image/svg+xml",
+			"sizes": "any",
+			"purpose": "maskable"
+		}
+	]
+}
