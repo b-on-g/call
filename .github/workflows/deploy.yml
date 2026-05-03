@@ -20,19 +20,13 @@ jobs:
             - uses: hyoo-ru/mam_build@master2
               with:
                   package: "bog/call"
+                  modules: "app"
 
-            - uses: b-on-g/mol-prerender-action@main
-              if: github.ref == 'refs/heads/master'
-              with:
-                  folder: "bog/call/-"
-                  base-url: "https://bog.github.io/call/"
-                  screens: |
-                      home
 
             - uses: hyoo-ru/gh-deploy@v4.4.1
               if: github.ref == 'refs/heads/master'
               with:
-                  folder: "bog/call/-"
+                  folder: "bog/call/app/-"
 
             - name: Deploy feature branch
               if: startsWith(github.ref, 'refs/heads/feature/')
