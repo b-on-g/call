@@ -57,7 +57,7 @@ namespace $ {
 			}
 			const bytes = $bog_call_codec.b64u_decode(b64)
 			const pako = require('pako') as typeof import('pako')
-			const json = pako.inflateRaw(bytes, { to: 'string' })
+			const json = pako.inflateRaw(bytes, { toText: true })
 			const payload = JSON.parse(json) as $bog_call_payload
 			if (payload.v !== 1) throw new Error('Unsupported payload version')
 			return payload

@@ -30,7 +30,7 @@ $bog_call_guest $mol_view
 					sub /
 						<= step_a @ \Шаг 1. Сканируйте QR хоста
 				<= Scanner $bog_call_qr_scan
-					on_decode <=> on_scan_decode?
+					on_decode? <=> on_scan_decode?
 				<= Status $mol_view
 					sub /
 						<= scan_status

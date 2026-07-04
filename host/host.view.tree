@@ -29,7 +29,7 @@ $bog_call_host $mol_view
 					sub /
 						<= step_label @ \Теперь сканируйте QR гостя
 				<= Scanner $bog_call_qr_scan
-					on_decode <=> on_scan_decode?
+					on_decode? <=> on_scan_decode?
 				<= Status $mol_view
 					sub /
 						<= scan_status
