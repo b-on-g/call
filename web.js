@@ -32,6 +32,71 @@ $.$$ = $
 "use strict";
 var $;
 (function ($) {
+    function $mol_offline() { }
+    $.$mol_offline = $mol_offline;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    /** Log begin of collapsed group only when some logged inside, returns func to close group */
+    function $mol_log3_area_lazy(event) {
+        const self = this.$;
+        const stack = self.$mol_log3_stack;
+        const deep = stack.length;
+        let logged = false;
+        stack.push(() => {
+            logged = true;
+            self.$mol_log3_area.call(self, event);
+        });
+        return () => {
+            if (logged)
+                self.console.groupEnd();
+            if (stack.length > deep)
+                stack.length = deep;
+        };
+    }
+    $.$mol_log3_area_lazy = $mol_log3_area_lazy;
+    $.$mol_log3_stack = [];
+})($ || ($ = {}));
+
+;
+"use strict";
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $mol_log3_web_make(level, color) {
+        return function $mol_log3_logger(event) {
+            const pending = this.$mol_log3_stack.pop();
+            if (pending)
+                pending();
+            let tpl = '%c';
+            const chunks = Object.entries(event);
+            for (let i = 0; i < chunks.length; ++i) {
+                tpl += (typeof chunks[i][1] === 'string') ? '%s: %s\n' : '%s: %o\n';
+            }
+            const style = `color:${color};font-weight:bolder`;
+            this.console[level](tpl.trim(), style, ...[].concat(...chunks));
+            const self = this;
+            return () => self.console.groupEnd();
+        };
+    }
+    $.$mol_log3_web_make = $mol_log3_web_make;
+    $.$mol_log3_come = $mol_log3_web_make('info', 'royalblue');
+    $.$mol_log3_done = $mol_log3_web_make('info', 'forestgreen');
+    $.$mol_log3_fail = $mol_log3_web_make('error', 'orangered');
+    $.$mol_log3_warn = $mol_log3_web_make('warn', 'goldenrod');
+    $.$mol_log3_rise = $mol_log3_web_make('log', 'magenta');
+    $.$mol_log3_area = $mol_log3_web_make('group', 'cyan');
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
 })($ || ($ = {}));
 
 ;
@@ -46,6 +111,131 @@ var $;
 var $;
 (function ($) {
     $.$mol_dom = $mol_dom_context;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const blacklist = new Set([
+        '//cse.google.com/adsense/search/async-ads.js'
+    ]);
+    /** Installs service worker proxy, which caches all requests and respond from cache on http errors. */
+    function $mol_offline_web() {
+        if (typeof window === 'undefined') {
+            self.addEventListener('install', (event) => {
+                ;
+                self.skipWaiting();
+            });
+            self.addEventListener('activate', (event) => {
+                // caches.delete( '$mol_offline' )
+                ;
+                self.clients.claim();
+                $$.$mol_log3_done({
+                    place: '$mol_offline',
+                    message: 'Activated',
+                });
+            });
+            self.addEventListener('fetch', (event) => {
+                const request = event.request;
+                // console.log( 'FETCH', request.mode, request.cache, request.url )
+                if (blacklist.has(request.url.replace(/^https?:/, ''))) {
+                    return event.respondWith(new Response(null, {
+                        status: 418,
+                        statusText: 'Blocked'
+                    }));
+                }
+                if (request.method !== 'GET')
+                    return;
+                if (!/^https?:/.test(request.url))
+                    return;
+                if (/\?/.test(request.url))
+                    return;
+                if (request.cache === 'no-store')
+                    return;
+                const fetch_data = () => fetch(new Request(request, { credentials: 'omit' })).then(response => {
+                    if (response.status !== 200)
+                        return response;
+                    event.waitUntil(caches.open('$mol_offline').then(cache => cache.put(request, response)));
+                    return response.clone();
+                });
+                const enrich = (response) => {
+                    // console.log( 'ENRICH', response.status, response.url )
+                    if (!response.status)
+                        return response;
+                    const headers = new Headers(response.headers);
+                    headers.set("$mol_offline", "");
+                    headers.set("Origin-Agent-Cluster", "?1"); // prevent thread sharing
+                    // headers.set( "Cross-Origin-Embedder-Policy", "credentialless" )
+                    // headers.set( "Cross-Origin-Resource-Policy", "cross-origin" )
+                    // headers.set( "Cross-Origin-Opener-Policy", "same-origin" )
+                    return new Response(response.body, {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers,
+                    });
+                };
+                const fresh = request.cache === 'force-cache' ? null : fetch_data();
+                if (fresh)
+                    event.waitUntil(fresh.then(enrich));
+                event.respondWith(caches.match(request).then(cached => request.cache === 'no-cache' || request.cache === 'reload'
+                    ? (cached
+                        ? fresh
+                            .then(actual => {
+                            if (actual.status === cached.status)
+                                return actual;
+                            throw new Error(`${actual.status}${actual.statusText ? ` ${actual.statusText}` : ''}`, { cause: actual });
+                        })
+                            .catch((err) => {
+                            const cloned = cached.clone();
+                            const message = `${err.cause instanceof Response ? '' : '500 '}${err.message} $mol_offline fallback to cache`;
+                            cloned.headers.set('$mol_offline_remote_status', message);
+                            return cloned;
+                        })
+                        : fresh)
+                    : (cached || fresh || fetch_data())).then(enrich));
+            });
+            self.addEventListener('beforeinstallprompt', (event) => event.prompt());
+        }
+        else if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            console.warn('HTTPS or localhost is required for service workers.');
+        }
+        else if (!navigator.serviceWorker) {
+            console.warn('Service Worker is not supported.');
+        }
+        else {
+            $mol_dom.addEventListener('DOMContentLoaded', () => {
+                navigator.serviceWorker.register('web.js').then(reg => {
+                    reg.addEventListener('updatefound', () => {
+                        $$.$mol_log3_rise({
+                            place: '$mol_offline',
+                            message: 'Outdated',
+                        });
+                        const worker = reg.installing;
+                        worker.addEventListener('statechange', () => {
+                            if (worker.state !== 'activated')
+                                return;
+                            window.location.reload();
+                        });
+                    });
+                });
+            });
+        }
+    }
+    $.$mol_offline_web = $mol_offline_web;
+    $.$mol_offline = $mol_offline_web;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    try {
+        $mol_offline();
+    }
+    catch (error) {
+        console.error(error);
+    }
 })($ || ($ = {}));
 
 ;
@@ -1872,63 +2062,6 @@ var $;
     function compare_primitive(left, right) {
         return Object.is(left[Symbol.toPrimitive]('default'), right[Symbol.toPrimitive]('default'));
     }
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    /** Log begin of collapsed group only when some logged inside, returns func to close group */
-    function $mol_log3_area_lazy(event) {
-        const self = this.$;
-        const stack = self.$mol_log3_stack;
-        const deep = stack.length;
-        let logged = false;
-        stack.push(() => {
-            logged = true;
-            self.$mol_log3_area.call(self, event);
-        });
-        return () => {
-            if (logged)
-                self.console.groupEnd();
-            if (stack.length > deep)
-                stack.length = deep;
-        };
-    }
-    $.$mol_log3_area_lazy = $mol_log3_area_lazy;
-    $.$mol_log3_stack = [];
-})($ || ($ = {}));
-
-;
-"use strict";
-
-;
-"use strict";
-var $;
-(function ($) {
-    function $mol_log3_web_make(level, color) {
-        return function $mol_log3_logger(event) {
-            const pending = this.$mol_log3_stack.pop();
-            if (pending)
-                pending();
-            let tpl = '%c';
-            const chunks = Object.entries(event);
-            for (let i = 0; i < chunks.length; ++i) {
-                tpl += (typeof chunks[i][1] === 'string') ? '%s: %s\n' : '%s: %o\n';
-            }
-            const style = `color:${color};font-weight:bolder`;
-            this.console[level](tpl.trim(), style, ...[].concat(...chunks));
-            const self = this;
-            return () => self.console.groupEnd();
-        };
-    }
-    $.$mol_log3_web_make = $mol_log3_web_make;
-    $.$mol_log3_come = $mol_log3_web_make('info', 'royalblue');
-    $.$mol_log3_done = $mol_log3_web_make('info', 'forestgreen');
-    $.$mol_log3_fail = $mol_log3_web_make('error', 'orangered');
-    $.$mol_log3_warn = $mol_log3_web_make('warn', 'goldenrod');
-    $.$mol_log3_rise = $mol_log3_web_make('log', 'magenta');
-    $.$mol_log3_area = $mol_log3_web_make('group', 'cyan');
 })($ || ($ = {}));
 
 ;
@@ -15994,6 +16127,8 @@ var $;
             });
         }
         slaves = new $mol_wire_set();
+        /** Direct P2P ports which sync all touched lands like masters */
+        peers = new $mol_wire_set();
         sync() {
             this.sync_news();
             this.sync_port();
@@ -16002,7 +16137,7 @@ var $;
             const glob = this.$.$giper_baza_glob;
             const lands = [...this.lands_news].map(link => glob.Land(new $giper_baza_link(link)));
             try {
-                for (const port of this.masters()) {
+                for (const port of [...this.masters(), ...this.peers]) {
                     for (const land of lands) {
                         this.sync_port_land([port, land.link()]);
                     }
@@ -16029,7 +16164,7 @@ var $;
             }
         }
         ports() {
-            return [...this.masters(), ...this.slaves];
+            return [...this.masters(), ...this.peers, ...this.slaves];
         }
         masters() {
             try {
@@ -16114,7 +16249,7 @@ var $;
             }
         }
         sync_land(land) {
-            for (const port of this.masters()) {
+            for (const port of [...this.masters(), ...this.peers]) {
                 this.port_lands_passive(port).add(land.str);
                 this.sync_port_land([port, land]);
             }
@@ -16127,7 +16262,11 @@ var $;
                     land.link().str,
                     new $giper_baza_pack_part([], faces)
                 ]]).asArray();
-            for (const port of this.ports()) {
+            // Runs fiberless from Land destructor, so must not force pending masters:
+            // demanding them respawns a fresh unsubscribed connection on every retry - endless loop.
+            // Farewell pack matters for already established ports only, so cached list is enough.
+            const ports = $mol_wire_probe(() => this.ports()) ?? [...this.peers, ...this.slaves];
+            for (const port of ports) {
                 if (!this.port_lands_passive(port).has(land.link().str))
                     continue;
                 this.port_lands_passive(port).delete(land.link().str);
@@ -20294,10 +20433,245 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    /** Communication link with other peer */
+    class $giper_baza_port extends $mol_object2 {
+        faces = new $mol_wire_dict();
+        send(pack) { }
+    }
+    $.$giper_baza_port = $giper_baza_port;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    /** Communication port over WebRTC DataChannel */
+    class $giper_baza_port_webrtc extends $mol_rest_port {
+        /** ICE servers used to establish direct connections */
+        static ice = [{ urls: 'stun:stun.l.google.com:19302' }];
+        channel;
+        send_nil() {
+            if (this.channel.readyState !== 'open')
+                return;
+            this.channel.send(new Uint8Array);
+        }
+        send_bin(data) {
+            if (this.channel.readyState !== 'open')
+                return;
+            this.channel.send(data);
+        }
+        send_text(data) {
+            if (this.channel.readyState !== 'open')
+                return;
+            this.channel.send($mol_charset_encode(data));
+        }
+    }
+    __decorate([
+        $mol_action
+    ], $giper_baza_port_webrtc.prototype, "send_nil", null);
+    __decorate([
+        $mol_action
+    ], $giper_baza_port_webrtc.prototype, "send_bin", null);
+    __decorate([
+        $mol_action
+    ], $giper_baza_port_webrtc.prototype, "send_text", null);
+    $.$giper_baza_port_webrtc = $giper_baza_port_webrtc;
+    /** Resolves when all ICE candidates are gathered (non-trickle strategy) */
+    function gathered(rtc) {
+        if (rtc.iceGatheringState === 'complete')
+            return Promise.resolve();
+        return new Promise(done => {
+            rtc.onicegatheringstatechange = () => {
+                if (rtc.iceGatheringState === 'complete')
+                    done();
+            };
+        });
+    }
+    /**
+     * Offerer side: makes connection with outgoing DataChannel.
+     * Connection and channel are ready synchronously,
+     * sdp resolves with complete local offer when ICE gathering finishes.
+     */
+    function $giper_baza_port_webrtc_propose() {
+        const rtc = new RTCPeerConnection({ iceServers: $giper_baza_port_webrtc.ice });
+        const channel = rtc.createDataChannel('$giper_baza_yard');
+        const sdp = (async () => {
+            await rtc.setLocalDescription(await rtc.createOffer());
+            await gathered(rtc);
+            return rtc.localDescription.sdp;
+        })();
+        return { rtc, channel, sdp };
+    }
+    $.$giper_baza_port_webrtc_propose = $giper_baza_port_webrtc_propose;
+    /**
+     * Answerer side: makes connection for the remote offer.
+     * channel resolves with incoming DataChannel,
+     * sdp resolves with complete local answer when ICE gathering finishes.
+     */
+    function $giper_baza_port_webrtc_accept(offer) {
+        const rtc = new RTCPeerConnection({ iceServers: $giper_baza_port_webrtc.ice });
+        const channel = new Promise(done => {
+            rtc.ondatachannel = event => done(event.channel);
+        });
+        const sdp = (async () => {
+            await rtc.setRemoteDescription({ type: 'offer', sdp: offer });
+            await rtc.setLocalDescription(await rtc.createAnswer());
+            await gathered(rtc);
+            return rtc.localDescription.sdp;
+        })();
+        return { rtc, channel, sdp };
+    }
+    $.$giper_baza_port_webrtc_accept = $giper_baza_port_webrtc_accept;
+    /** Offerer side: applies the remote answer */
+    function $giper_baza_port_webrtc_finish(rtc, answer) {
+        return rtc.setRemoteDescription({ type: 'answer', sdp: answer });
+    }
+    $.$giper_baza_port_webrtc_finish = $giper_baza_port_webrtc_finish;
+    /** Wraps DataChannel into Port and wires its events to given handlers */
+    function $giper_baza_port_webrtc_bind(channel, income, open, close) {
+        channel.binaryType = 'arraybuffer';
+        const port = $giper_baza_port_webrtc.make({ channel });
+        if (channel.readyState === 'open')
+            open(port);
+        else
+            channel.onopen = () => open(port);
+        channel.onmessage = event => {
+            if (!(event.data instanceof ArrayBuffer))
+                return;
+            if (!event.data.byteLength)
+                return;
+            income(port, new Uint8Array(event.data));
+        };
+        channel.onclose = () => close(port);
+        return port;
+    }
+    $.$giper_baza_port_webrtc_bind = $giper_baza_port_webrtc_bind;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    /**
+     * Manual P2P handshake for the cases when no master is reachable
+     * (offline LAN, hotspot without internet).
+     * Offer and answer are just strings - pass them any way you like:
+     * QR code, messenger, AirDrop, clipboard.
+     */
+    class $giper_baza_hand extends $mol_object {
+        yard() {
+            return this.$.$giper_baza_glob.yard();
+        }
+        /** Established direct port, reactive */
+        port(next = null) {
+            return next;
+        }
+        _attempt = null;
+        /** Side A: current connection attempt. Call reset() to start over. */
+        attempt() {
+            if (!this._attempt) {
+                const pair = $giper_baza_port_webrtc_propose();
+                this.bind(pair.rtc, pair.channel);
+                this._attempt = pair;
+            }
+            return this._attempt;
+        }
+        /** Side A: resolves with offer string for the mate */
+        proposal() {
+            return this.attempt().sdp;
+        }
+        _greetings = new Map();
+        /** Side B: accepts remote offer, resolves with answer string for the mate */
+        answer(offer) {
+            let pair = this._greetings.get(offer);
+            if (!pair) {
+                const fresh = pair = $giper_baza_port_webrtc_accept(offer);
+                fresh.channel.then(channel => this.bind(fresh.rtc, channel));
+                this._greetings.set(offer, fresh);
+            }
+            return pair.sdp;
+        }
+        /** Side A: applies remote answer, channel opens after that */
+        finish(answer) {
+            return $giper_baza_port_webrtc_finish(this.attempt().rtc, answer);
+        }
+        /** Drops all connections to start over */
+        reset() {
+            this._attempt?.rtc.close();
+            this._attempt = null;
+            for (const pair of this._greetings.values())
+                pair.rtc.close();
+            this._greetings.clear();
+        }
+        destructor() {
+            this.reset();
+        }
+        bind(rtc, channel) {
+            const port = $giper_baza_port_webrtc_bind(channel, (port, data) => $mol_wire_async(this).income(port, data), port => $mol_wire_async(this).port_add(port), port => $mol_wire_async(this).port_drop(port));
+            rtc.onconnectionstatechange = () => {
+                if (rtc.connectionState !== 'failed')
+                    return;
+                $mol_wire_async(this).port_drop(port);
+            };
+        }
+        income(port, data) {
+            this.yard().port_income(port, data);
+        }
+        port_add(port) {
+            this.port(port);
+            this.yard().peers.add(port);
+        }
+        port_drop(port) {
+            this.yard().peers.delete(port);
+            if (this.port() === port)
+                this.port(null);
+        }
+        ;
+        [Symbol.for('nodejs.util.inspect.custom')]() {
+            return $mol_term_color.blue(`$giper_baza_hand`);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $giper_baza_hand.prototype, "port", null);
+    __decorate([
+        $mol_action
+    ], $giper_baza_hand.prototype, "income", null);
+    __decorate([
+        $mol_action
+    ], $giper_baza_hand.prototype, "port_add", null);
+    __decorate([
+        $mol_action
+    ], $giper_baza_hand.prototype, "port_drop", null);
+    $.$giper_baza_hand = $giper_baza_hand;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    /**
+     * Звонок поверх P2P-стека Гипер Базы:
+     * - соединение и QR-строки делает $giper_baza_hand (порт уходит в yard.peers,
+     *   так что общие ленды синкаются прямо по каналу звонка);
+     * - звук добавляется после коннекта через renegotiation по отдельному
+     *   DataChannel 'bog_call' (его создаёт гость, хост шлёт голосовой offer).
+     */
     class $bog_call_peer extends $mol_object {
-        _pc = null;
+        _hand = null;
+        _rtc = null;
+        _signal = null;
         _local = null;
         _remote_audio = null;
+        hand() {
+            if (!this._hand) {
+                // звонок локальный (QR в упор): host-кандидатов хватает,
+                // а ожидание STUN лишь затягивает генерацию QR
+                $giper_baza_port_webrtc.ice = [];
+                this._hand = $giper_baza_hand.make({ $: this.$ });
+            }
+            return this._hand;
+        }
         state(next) {
             return next ?? 'idle';
         }
@@ -20324,34 +20698,114 @@ var $;
         error(next) {
             return next ?? '';
         }
-        pc() {
-            if (this._pc)
-                return this._pc;
-            const pc = new RTCPeerConnection({
-                iceServers: [],
-                iceTransportPolicy: 'all',
-                bundlePolicy: 'max-bundle',
-            });
-            pc.addEventListener('connectionstatechange', () => {
-                this.connection_state(pc.connectionState);
-                if (pc.connectionState === 'connected')
+        _wire(rtc) {
+            if (this._rtc === rtc)
+                return;
+            this._rtc = rtc;
+            rtc.addEventListener('connectionstatechange', () => {
+                this.connection_state(rtc.connectionState);
+                if (rtc.connectionState === 'connected')
                     this.state('connected');
-                else if (pc.connectionState === 'failed')
+                else if (rtc.connectionState === 'failed')
                     this.state('failed');
-                else if (pc.connectionState === 'disconnected')
+                else if (rtc.connectionState === 'disconnected')
                     this.quality('lost');
             });
-            pc.addEventListener('iceconnectionstatechange', () => {
-                this.ice_state(pc.iceConnectionState);
+            rtc.addEventListener('iceconnectionstatechange', () => {
+                this.ice_state(rtc.iceConnectionState);
             });
-            pc.addEventListener('track', e => {
+            rtc.addEventListener('track', e => {
                 const stream = e.streams[0];
                 if (!stream)
                     return;
                 this._attach_remote(stream);
             });
-            this._pc = pc;
-            return pc;
+        }
+        /** Хост: hand делает offer-строку, голосовой канал ждём от гостя */
+        async create_offer() {
+            this.state('gathering');
+            const hand = this.hand();
+            const sdp = await hand.proposal();
+            const rtc = hand._attempt.rtc;
+            this._wire(rtc);
+            rtc.addEventListener('datachannel', event => {
+                if (event.channel.label !== 'bog_call')
+                    return;
+                this._signal_open(event.channel, 'host');
+            });
+            this.state('awaiting_answer');
+            return sdp;
+        }
+        /** Гость: hand отвечает на offer, голосовой канал создаём сами */
+        async accept_offer(sdp) {
+            this.state('gathering');
+            const hand = this.hand();
+            const answer = await hand.answer(sdp);
+            const pair = hand._greetings.get(sdp);
+            if (!pair)
+                throw new Error('No greeting for offer');
+            this._wire(pair.rtc);
+            this._signal_open(pair.rtc.createDataChannel('bog_call'), 'guest');
+            this.state('connecting');
+            return answer;
+        }
+        /** Хост: применяем answer гостя, дальше канал откроется сам */
+        async accept_answer(sdp) {
+            await this.hand().finish(sdp);
+            this.state('connecting');
+        }
+        _signal_open(channel, role) {
+            this._signal = channel;
+            channel.onmessage = event => {
+                if (typeof event.data !== 'string')
+                    return;
+                this._signal_income(JSON.parse(event.data))
+                    .catch(err => this.error(String(err.message ?? err)));
+            };
+            if (role === 'host') {
+                const start = () => {
+                    this._voice_offer()
+                        .catch(err => this.error(String(err.message ?? err)));
+                };
+                if (channel.readyState === 'open')
+                    start();
+                else
+                    channel.onopen = start;
+            }
+        }
+        /** Хост: докидываем звук в установленное соединение */
+        async _voice_offer() {
+            const rtc = this._rtc;
+            if (!rtc)
+                return;
+            await this.ensure_mic();
+            const offer = await rtc.createOffer();
+            await rtc.setLocalDescription(offer);
+            await this._wait_ice();
+            this._signal_send({ t: 'o', s: rtc.localDescription.sdp });
+        }
+        async _signal_income(msg) {
+            const rtc = this._rtc;
+            if (!rtc)
+                return;
+            if (msg.t === 'o') {
+                // гость: свои треки до answer, чтобы звук поехал в обе стороны
+                await this.ensure_mic();
+                await rtc.setRemoteDescription({ type: 'offer', sdp: msg.s });
+                const answer = await rtc.createAnswer();
+                await rtc.setLocalDescription(answer);
+                await this._wait_ice();
+                this._signal_send({ t: 'a', s: rtc.localDescription.sdp });
+            }
+            if (msg.t === 'a') {
+                await rtc.setRemoteDescription({ type: 'answer', sdp: msg.s });
+            }
+        }
+        _signal_send(msg) {
+            const channel = this._signal;
+            if (!channel || channel.readyState !== 'open')
+                return;
+            channel.send(JSON.stringify(msg));
         }
         _attach_remote(stream) {
             let audio = this._remote_audio;
@@ -20377,65 +20831,41 @@ var $;
                 video: false,
             });
             this._local = stream;
-            const pc = this.pc();
-            for (const track of stream.getAudioTracks()) {
-                pc.addTrack(track, stream);
+            const rtc = this._rtc;
+            if (rtc) {
+                for (const track of stream.getAudioTracks()) {
+                    rtc.addTrack(track, stream);
+                }
             }
             return stream;
         }
         _wait_ice() {
-            const pc = this.pc();
-            if (pc.iceGatheringState === 'complete')
+            const rtc = this._rtc;
+            if (!rtc || rtc.iceGatheringState === 'complete')
                 return Promise.resolve();
             return new Promise(resolve => {
                 const timer = setTimeout(() => {
-                    pc.removeEventListener('icegatheringstatechange', on_change);
+                    rtc.removeEventListener('icegatheringstatechange', on_change);
                     resolve();
                 }, 3000);
                 const on_change = () => {
-                    if (pc.iceGatheringState !== 'complete')
+                    if (rtc.iceGatheringState !== 'complete')
                         return;
                     clearTimeout(timer);
-                    pc.removeEventListener('icegatheringstatechange', on_change);
+                    rtc.removeEventListener('icegatheringstatechange', on_change);
                     resolve();
                 };
-                pc.addEventListener('icegatheringstatechange', on_change);
+                rtc.addEventListener('icegatheringstatechange', on_change);
             });
         }
-        async create_offer() {
-            this.state('gathering');
-            await this.ensure_mic();
-            const pc = this.pc();
-            const offer = await pc.createOffer({ offerToReceiveAudio: true });
-            await pc.setLocalDescription(offer);
-            await this._wait_ice();
-            this.state('awaiting_answer');
-            return pc.localDescription.sdp;
-        }
-        async accept_offer(sdp) {
-            this.state('gathering');
-            await this.ensure_mic();
-            const pc = this.pc();
-            await pc.setRemoteDescription({ type: 'offer', sdp });
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            await this._wait_ice();
-            this.state('connecting');
-            return pc.localDescription.sdp;
-        }
-        async accept_answer(sdp) {
-            const pc = this.pc();
-            await pc.setRemoteDescription({ type: 'answer', sdp });
-            this.state('connecting');
-        }
         restart_ice() {
-            this._pc?.restartIce();
+            this._rtc?.restartIce();
         }
         monitor_quality() {
-            const pc = this._pc;
-            if (!pc)
+            const rtc = this._rtc;
+            if (!rtc)
                 return 'good';
-            const cs = pc.connectionState;
+            const cs = rtc.connectionState;
             if (cs === 'connected')
                 return 'good';
             if (cs === 'disconnected' || cs === 'failed')
@@ -20443,8 +20873,10 @@ var $;
             return 'degraded';
         }
         hangup() {
-            this._pc?.close();
-            this._pc = null;
+            this._hand?.reset();
+            this._hand = null;
+            this._rtc = null;
+            this._signal = null;
             this._local?.getTracks().forEach(t => t.stop());
             this._local = null;
             if (this._remote_audio) {
@@ -30593,139 +31025,6 @@ var $;
 	($mol_mem(($.$bog_call_app.prototype), "Guest"));
 	($mol_mem(($.$bog_call_app.prototype), "Active"));
 
-
-;
-"use strict";
-var $;
-(function ($) {
-    function $mol_offline() { }
-    $.$mol_offline = $mol_offline;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    const blacklist = new Set([
-        '//cse.google.com/adsense/search/async-ads.js'
-    ]);
-    /** Installs service worker proxy, which caches all requests and respond from cache on http errors. */
-    function $mol_offline_web() {
-        if (typeof window === 'undefined') {
-            self.addEventListener('install', (event) => {
-                ;
-                self.skipWaiting();
-            });
-            self.addEventListener('activate', (event) => {
-                // caches.delete( '$mol_offline' )
-                ;
-                self.clients.claim();
-                $$.$mol_log3_done({
-                    place: '$mol_offline',
-                    message: 'Activated',
-                });
-            });
-            self.addEventListener('fetch', (event) => {
-                const request = event.request;
-                // console.log( 'FETCH', request.mode, request.cache, request.url )
-                if (blacklist.has(request.url.replace(/^https?:/, ''))) {
-                    return event.respondWith(new Response(null, {
-                        status: 418,
-                        statusText: 'Blocked'
-                    }));
-                }
-                if (request.method !== 'GET')
-                    return;
-                if (!/^https?:/.test(request.url))
-                    return;
-                if (/\?/.test(request.url))
-                    return;
-                if (request.cache === 'no-store')
-                    return;
-                const fetch_data = () => fetch(new Request(request, { credentials: 'omit' })).then(response => {
-                    if (response.status !== 200)
-                        return response;
-                    event.waitUntil(caches.open('$mol_offline').then(cache => cache.put(request, response)));
-                    return response.clone();
-                });
-                const enrich = (response) => {
-                    // console.log( 'ENRICH', response.status, response.url )
-                    if (!response.status)
-                        return response;
-                    const headers = new Headers(response.headers);
-                    headers.set("$mol_offline", "");
-                    headers.set("Origin-Agent-Cluster", "?1"); // prevent thread sharing
-                    // headers.set( "Cross-Origin-Embedder-Policy", "credentialless" )
-                    // headers.set( "Cross-Origin-Resource-Policy", "cross-origin" )
-                    // headers.set( "Cross-Origin-Opener-Policy", "same-origin" )
-                    return new Response(response.body, {
-                        status: response.status,
-                        statusText: response.statusText,
-                        headers,
-                    });
-                };
-                const fresh = request.cache === 'force-cache' ? null : fetch_data();
-                if (fresh)
-                    event.waitUntil(fresh.then(enrich));
-                event.respondWith(caches.match(request).then(cached => request.cache === 'no-cache' || request.cache === 'reload'
-                    ? (cached
-                        ? fresh
-                            .then(actual => {
-                            if (actual.status === cached.status)
-                                return actual;
-                            throw new Error(`${actual.status}${actual.statusText ? ` ${actual.statusText}` : ''}`, { cause: actual });
-                        })
-                            .catch((err) => {
-                            const cloned = cached.clone();
-                            const message = `${err.cause instanceof Response ? '' : '500 '}${err.message} $mol_offline fallback to cache`;
-                            cloned.headers.set('$mol_offline_remote_status', message);
-                            return cloned;
-                        })
-                        : fresh)
-                    : (cached || fresh || fetch_data())).then(enrich));
-            });
-            self.addEventListener('beforeinstallprompt', (event) => event.prompt());
-        }
-        else if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-            console.warn('HTTPS or localhost is required for service workers.');
-        }
-        else if (!navigator.serviceWorker) {
-            console.warn('Service Worker is not supported.');
-        }
-        else {
-            $mol_dom.addEventListener('DOMContentLoaded', () => {
-                navigator.serviceWorker.register('web.js').then(reg => {
-                    reg.addEventListener('updatefound', () => {
-                        $$.$mol_log3_rise({
-                            place: '$mol_offline',
-                            message: 'Outdated',
-                        });
-                        const worker = reg.installing;
-                        worker.addEventListener('statechange', () => {
-                            if (worker.state !== 'activated')
-                                return;
-                            window.location.reload();
-                        });
-                    });
-                });
-            });
-        }
-    }
-    $.$mol_offline_web = $mol_offline_web;
-    $.$mol_offline = $mol_offline_web;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    try {
-        $mol_offline();
-    }
-    catch (error) {
-        console.error(error);
-    }
-})($ || ($ = {}));
 
 ;
 "use strict";

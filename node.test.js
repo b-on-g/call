@@ -15994,6 +15994,8 @@ var $;
             });
         }
         slaves = new $mol_wire_set();
+        /** Direct P2P ports which sync all touched lands like masters */
+        peers = new $mol_wire_set();
         sync() {
             this.sync_news();
             this.sync_port();
@@ -16002,7 +16004,7 @@ var $;
             const glob = this.$.$giper_baza_glob;
             const lands = [...this.lands_news].map(link => glob.Land(new $giper_baza_link(link)));
             try {
-                for (const port of this.masters()) {
+                for (const port of [...this.masters(), ...this.peers]) {
                     for (const land of lands) {
                         this.sync_port_land([port, land.link()]);
                     }
@@ -16029,7 +16031,7 @@ var $;
             }
         }
         ports() {
-            return [...this.masters(), ...this.slaves];
+            return [...this.masters(), ...this.peers, ...this.slaves];
         }
         masters() {
             try {
@@ -16114,7 +16116,7 @@ var $;
             }
         }
         sync_land(land) {
-            for (const port of this.masters()) {
+            for (const port of [...this.masters(), ...this.peers]) {
                 this.port_lands_passive(port).add(land.str);
                 this.sync_port_land([port, land]);
             }
@@ -16127,7 +16129,11 @@ var $;
                     land.link().str,
                     new $giper_baza_pack_part([], faces)
                 ]]).asArray();
-            for (const port of this.ports()) {
+            // Runs fiberless from Land destructor, so must not force pending masters:
+            // demanding them respawns a fresh unsubscribed connection on every retry - endless loop.
+            // Farewell pack matters for already established ports only, so cached list is enough.
+            const ports = $mol_wire_probe(() => this.ports()) ?? [...this.peers, ...this.slaves];
+            for (const port of ports) {
                 if (!this.port_lands_passive(port).has(land.link().str))
                     continue;
                 this.port_lands_passive(port).delete(land.link().str);
@@ -28730,6 +28736,37 @@ var $;
         $giper_baza_glob.Seed();
         return ['http://localhost:9090/'];
     };
+    $mol_test({
+        async 'forget_land never forces pending master connection'($) {
+            // Регресс на бесконечный цикл: land.destructor() зовёт forget_land
+            // вне фибры, и если тот форсит вычисление master() (висящий коннект),
+            // то суспензия без подписчика уничтожает master-фибру, инвалидация
+            // немедленно ретраит задачу, и так до OOM - вкладка крашится.
+            // Прощальный пакет должен уходить только в уже готовые порты из кеша.
+            let master_calls = 0;
+            class Yard extends $.$giper_baza_yard {
+                master() {
+                    // предохранитель: с багом пересоздание мастера зацикливается
+                    // и глушит event loop, поэтому после 10 попыток отдаём ошибку
+                    if (++master_calls > 10)
+                        $mol_fail(new Error('master respawn storm'));
+                    return new Promise(() => { }); // вечно висящее подключение
+                }
+            }
+            __decorate([
+                $mol_mem
+            ], Yard.prototype, "master", null);
+            const yard = Yard.make({ $ });
+            const auth = await $.$giper_baza_auth.generate();
+            const land = $giper_baza_land.make({ $, auth: () => auth });
+            // как в land.destructor: вызов вне фибры, в изолированной задаче
+            // (первый проход выполняется синхронно, хвост сразу прибиваем)
+            const call = $mol_wire_async(yard).forget_land(land);
+            call.catch?.(() => { });
+            call.destructor?.();
+            $mol_assert_equal(master_calls, 0);
+        },
+    });
 })($ || ($ = {}));
 
 ;

@@ -11908,6 +11908,8 @@ declare namespace $ {
         reconnects(reset?: null): number;
         master(): $mol_rest_port | null;
         slaves: $mol_wire_set<$mol_rest_port>;
+        /** Direct P2P ports which sync all touched lands like masters */
+        peers: $mol_wire_set<$mol_rest_port>;
         sync(): void;
         sync_news(): void;
         sync_port(): void;

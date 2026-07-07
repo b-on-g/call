@@ -15994,6 +15994,8 @@ var $;
             });
         }
         slaves = new $mol_wire_set();
+        /** Direct P2P ports which sync all touched lands like masters */
+        peers = new $mol_wire_set();
         sync() {
             this.sync_news();
             this.sync_port();
@@ -16002,7 +16004,7 @@ var $;
             const glob = this.$.$giper_baza_glob;
             const lands = [...this.lands_news].map(link => glob.Land(new $giper_baza_link(link)));
             try {
-                for (const port of this.masters()) {
+                for (const port of [...this.masters(), ...this.peers]) {
                     for (const land of lands) {
                         this.sync_port_land([port, land.link()]);
                     }
@@ -16029,7 +16031,7 @@ var $;
             }
         }
         ports() {
-            return [...this.masters(), ...this.slaves];
+            return [...this.masters(), ...this.peers, ...this.slaves];
         }
         masters() {
             try {
@@ -16114,7 +16116,7 @@ var $;
             }
         }
         sync_land(land) {
-            for (const port of this.masters()) {
+            for (const port of [...this.masters(), ...this.peers]) {
                 this.port_lands_passive(port).add(land.str);
                 this.sync_port_land([port, land]);
             }
@@ -16127,7 +16129,11 @@ var $;
                     land.link().str,
                     new $giper_baza_pack_part([], faces)
                 ]]).asArray();
-            for (const port of this.ports()) {
+            // Runs fiberless from Land destructor, so must not force pending masters:
+            // demanding them respawns a fresh unsubscribed connection on every retry - endless loop.
+            // Farewell pack matters for already established ports only, so cached list is enough.
+            const ports = $mol_wire_probe(() => this.ports()) ?? [...this.peers, ...this.slaves];
+            for (const port of ports) {
                 if (!this.port_lands_passive(port).has(land.link().str))
                     continue;
                 this.port_lands_passive(port).delete(land.link().str);

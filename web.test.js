@@ -1,6 +1,18 @@
 "use strict";
 function require( path ){ return $node[ path ] };
 "use strict";
+
+;
+"use strict";
+
+;
+"use strict";
+
+;
+"use strict";
+
+;
+"use strict";
 var $;
 (function ($_1) {
     function $mol_test(set) {
@@ -97,9 +109,17 @@ var $;
 
 ;
 "use strict";
-
-;
-"use strict";
+var $;
+(function ($_1) {
+    $mol_test_mocks.push($ => {
+        $.$mol_log3_come = () => { };
+        $.$mol_log3_done = () => { };
+        $.$mol_log3_fail = () => { };
+        $.$mol_log3_warn = () => { };
+        $.$mol_log3_rise = () => { };
+        $.$mol_log3_area = () => () => { };
+    });
+})($ || ($ = {}));
 
 ;
 "use strict";
@@ -1068,26 +1088,6 @@ var $;
 
 ;
 "use strict";
-
-;
-"use strict";
-
-;
-"use strict";
-
-;
-"use strict";
-var $;
-(function ($_1) {
-    $mol_test_mocks.push($ => {
-        $.$mol_log3_come = () => { };
-        $.$mol_log3_done = () => { };
-        $.$mol_log3_fail = () => { };
-        $.$mol_log3_warn = () => { };
-        $.$mol_log3_rise = () => { };
-        $.$mol_log3_area = () => () => { };
-    });
-})($ || ($ = {}));
 
 ;
 "use strict";
@@ -6306,6 +6306,37 @@ var $;
         $giper_baza_glob.Seed();
         return ['http://localhost:9090/'];
     };
+    $mol_test({
+        async 'forget_land never forces pending master connection'($) {
+            // Регресс на бесконечный цикл: land.destructor() зовёт forget_land
+            // вне фибры, и если тот форсит вычисление master() (висящий коннект),
+            // то суспензия без подписчика уничтожает master-фибру, инвалидация
+            // немедленно ретраит задачу, и так до OOM - вкладка крашится.
+            // Прощальный пакет должен уходить только в уже готовые порты из кеша.
+            let master_calls = 0;
+            class Yard extends $.$giper_baza_yard {
+                master() {
+                    // предохранитель: с багом пересоздание мастера зацикливается
+                    // и глушит event loop, поэтому после 10 попыток отдаём ошибку
+                    if (++master_calls > 10)
+                        $mol_fail(new Error('master respawn storm'));
+                    return new Promise(() => { }); // вечно висящее подключение
+                }
+            }
+            __decorate([
+                $mol_mem
+            ], Yard.prototype, "master", null);
+            const yard = Yard.make({ $ });
+            const auth = await $.$giper_baza_auth.generate();
+            const land = $giper_baza_land.make({ $, auth: () => auth });
+            // как в land.destructor: вызов вне фибры, в изолированной задаче
+            // (первый проход выполняется синхронно, хвост сразу прибиваем)
+            const call = $mol_wire_async(yard).forget_land(land);
+            call.catch?.(() => { });
+            call.destructor?.();
+            $mol_assert_equal(master_calls, 0);
+        },
+    });
 })($ || ($ = {}));
 
 ;
@@ -6358,6 +6389,120 @@ var $;
                 ['table', '| header1 | header2\n|----|----\n| Cell11 | Cell12\n| Cell21 | Cell22\n\n', ['| header1 | header2\n|----|----\n| Cell11 | Cell12\n| Cell21 | Cell22\n', '\n'], 0],
                 ['table', '| Cell11 | Cell12\n| Cell21 | Cell22\n', ['| Cell11 | Cell12\n| Cell21 | Cell22\n', ''], 68],
             ]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function channel_mock(sent) {
+        return {
+            readyState: 'connecting',
+            send: (data) => sent.push(data),
+        };
+    }
+    $mol_test({
+        'Sends only into open channel'() {
+            const sent = [];
+            const channel = channel_mock(sent);
+            const port = $giper_baza_port_webrtc.make({ channel });
+            // Канал ещё не открыт - пакет молча дропается,
+            // yard дошлёт недостающее после реконнекта через обмен фейсами
+            port.send_bin(new Uint8Array([1, 2, 3]));
+            $mol_assert_equal(sent.length, 0);
+            channel.readyState = 'open';
+            port.send_bin(new Uint8Array([1, 2, 3]));
+            $mol_assert_equal(sent, [new Uint8Array([1, 2, 3])]);
+        },
+        async 'Loopback: bytes travel through real WebRTC DataChannel'() {
+            // Настоящая пара RTCPeerConnection в пределах одной страницы:
+            // проверяем, что порт доносит бинарные пакеты через DataChannel.
+            const alice = new RTCPeerConnection;
+            const bob = new RTCPeerConnection;
+            try {
+                alice.onicecandidate = event => { if (event.candidate)
+                    bob.addIceCandidate(event.candidate); };
+                bob.onicecandidate = event => { if (event.candidate)
+                    alice.addIceCandidate(event.candidate); };
+                const channel = alice.createDataChannel('$giper_baza_yard');
+                channel.binaryType = 'arraybuffer';
+                const received = new Promise((done, fail) => {
+                    setTimeout(() => fail(new Error('WebRTC loopback timeout')), 10_000);
+                    bob.ondatachannel = event => {
+                        event.channel.binaryType = 'arraybuffer';
+                        event.channel.onmessage = msg => done(new Uint8Array(msg.data));
+                    };
+                });
+                await alice.setLocalDescription(await alice.createOffer());
+                await bob.setRemoteDescription(alice.localDescription);
+                await bob.setLocalDescription(await bob.createAnswer());
+                await alice.setRemoteDescription(bob.localDescription);
+                await new Promise(done => { channel.onopen = () => done(); });
+                const port = $giper_baza_port_webrtc.make({ channel });
+                port.send_bin(new Uint8Array([7, 7, 7]));
+                $mol_assert_equal(await received, new Uint8Array([7, 7, 7]));
+            }
+            finally {
+                alice.close();
+                bob.close();
+            }
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    function yard_mock() {
+        const peers = new $mol_wire_set();
+        return {
+            peers,
+            port_income: () => { },
+        };
+    }
+    $mol_test({
+        async 'Manual handshake: two strings make direct channel'($) {
+            // Полный цикл ручного рукопожатия без единого сервера:
+            // offer и answer - обычные строки, транспорт для них любой
+            // (QR, мессенджер, буфер обмена).
+            const yard_alice = yard_mock();
+            const yard_bob = yard_mock();
+            const alice = $giper_baza_hand.make({ $, yard: () => yard_alice });
+            const bob = $giper_baza_hand.make({ $, yard: () => yard_bob });
+            // Для loopback внутри одной страницы STUN не нужен,
+            // а ожидание его таймаутов не влезает в лимит теста
+            const ice = $giper_baza_port_webrtc.ice;
+            $giper_baza_port_webrtc.ice = [];
+            try {
+                // Алиса делает offer (строка уходит Бобу, например, QR-кодом)
+                const offer = await alice.proposal();
+                $mol_assert_ok(offer.includes('candidate')); // non-trickle: кандидаты уже внутри
+                // Боб отвечает (строка возвращается Алисе)
+                const answer = await bob.answer(offer);
+                $mol_assert_ok(answer.includes('candidate'));
+                // Алиса применяет answer - канал открывается сам
+                await alice.finish(answer);
+                await new Promise((done, fail) => {
+                    setTimeout(() => fail(new Error('Handshake timeout')), 4000);
+                    const check = () => {
+                        if (alice.port() && bob.port())
+                            return done();
+                        setTimeout(check, 50);
+                    };
+                    check();
+                });
+                // Оба порта зарегистрированы в yard и готовы синкать ленды
+                $mol_assert_ok(yard_alice.peers.has(alice.port()));
+                $mol_assert_ok(yard_bob.peers.has(bob.port()));
+            }
+            finally {
+                $giper_baza_port_webrtc.ice = ice;
+                alice.reset();
+                bob.reset();
+            }
         },
     });
 })($ || ($ = {}));
