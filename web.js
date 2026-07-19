@@ -29212,11 +29212,10 @@ var $;
                 return null;
             }
             stream() {
-                const promise = navigator.mediaDevices.getUserMedia({
+                const stream = $mol_wire_sync(navigator.mediaDevices).getUserMedia({
                     video: { facingMode: { ideal: 'environment' } },
                     audio: false,
                 });
-                const stream = $mol_wire_sync(promise);
                 return Object.assign(stream, {
                     destructor: () => stream.getTracks().forEach(t => t.stop()),
                 });
