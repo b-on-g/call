@@ -15,6 +15,60 @@ declare namespace $ {
 }
 
 declare namespace $ {
+    function $mol_offline(): void;
+}
+
+declare namespace $ {
+    /** Logger event data */
+    type $mol_log3_event<Fields> = {
+        [key in string]: unknown;
+    } & {
+        /** Time of event creation */
+        time?: string;
+        /** Place of event creation */
+        place: unknown;
+        /** Short description of event */
+        message: string;
+    } & Fields;
+    /** Logger function */
+    type $mol_log3_logger<Fields, Res = void> = (this: $, event: $mol_log3_event<Fields>) => Res;
+    /** Log begin of some task */
+    let $mol_log3_come: $mol_log3_logger<{}>;
+    /** Log end of some task */
+    let $mol_log3_done: $mol_log3_logger<{}>;
+    /** Log error */
+    let $mol_log3_fail: $mol_log3_logger<{}>;
+    /** Log warning message */
+    let $mol_log3_warn: $mol_log3_logger<{
+        hint: string;
+    }>;
+    /** Log some generic event */
+    let $mol_log3_rise: $mol_log3_logger<{}>;
+    /** Log begin of log group, returns func to close group */
+    let $mol_log3_area: $mol_log3_logger<{}, () => void>;
+    /** Log begin of collapsed group only when some logged inside, returns func to close group */
+    function $mol_log3_area_lazy(this: $, event: $mol_log3_event<{}>): () => void;
+    let $mol_log3_stack: (() => void)[];
+}
+
+declare namespace $ {
+    /**
+     * Extracts keys from `Input` which values extends `Upper` and extendable by `Lower`.
+     *
+     * 	type MathConstants = $mol_type_keys_extract< Math , number > // "E" | "PI" ...
+     */
+    type $mol_type_keys_extract<Input, Upper, Lower = never> = {
+        [Field in keyof Input]: unknown extends Input[Field] ? never : Input[Field] extends never ? never : Input[Field] extends Upper ? [
+            Lower
+        ] extends [Input[Field]] ? Field : never : never;
+    }[keyof Input];
+}
+
+declare namespace $ {
+    function $mol_log3_web_make(level: $mol_type_keys_extract<Console, Function>, color: string): (this: $, event: $mol_log3_event<{}>) => () => void;
+}
+
+declare namespace $ {
     var $mol_dom_context: typeof globalThis;
 }
 
@@ -23,6 +77,14 @@ declare namespace $ {
 
 declare namespace $ {
     var $mol_dom: typeof globalThis;
+}
+
+declare namespace $ {
+    /** Installs service worker proxy, which caches all requests and respond from cache on http errors. */
+    function $mol_offline_web(): void;
+}
+
+declare namespace $ {
 }
 
 declare namespace $ {
@@ -1061,56 +1123,6 @@ declare namespace $ {
      * Define `Symbol.toPrimitive` to customize.
      */
     function $mol_compare_deep<Value>(left: Value, right: Value): boolean;
-}
-
-declare namespace $ {
-    /** Logger event data */
-    type $mol_log3_event<Fields> = {
-        [key in string]: unknown;
-    } & {
-        /** Time of event creation */
-        time?: string;
-        /** Place of event creation */
-        place: unknown;
-        /** Short description of event */
-        message: string;
-    } & Fields;
-    /** Logger function */
-    type $mol_log3_logger<Fields, Res = void> = (this: $, event: $mol_log3_event<Fields>) => Res;
-    /** Log begin of some task */
-    let $mol_log3_come: $mol_log3_logger<{}>;
-    /** Log end of some task */
-    let $mol_log3_done: $mol_log3_logger<{}>;
-    /** Log error */
-    let $mol_log3_fail: $mol_log3_logger<{}>;
-    /** Log warning message */
-    let $mol_log3_warn: $mol_log3_logger<{
-        hint: string;
-    }>;
-    /** Log some generic event */
-    let $mol_log3_rise: $mol_log3_logger<{}>;
-    /** Log begin of log group, returns func to close group */
-    let $mol_log3_area: $mol_log3_logger<{}, () => void>;
-    /** Log begin of collapsed group only when some logged inside, returns func to close group */
-    function $mol_log3_area_lazy(this: $, event: $mol_log3_event<{}>): () => void;
-    let $mol_log3_stack: (() => void)[];
-}
-
-declare namespace $ {
-    /**
-     * Extracts keys from `Input` which values extends `Upper` and extendable by `Lower`.
-     *
-     * 	type MathConstants = $mol_type_keys_extract< Math , number > // "E" | "PI" ...
-     */
-    type $mol_type_keys_extract<Input, Upper, Lower = never> = {
-        [Field in keyof Input]: unknown extends Input[Field] ? never : Input[Field] extends never ? never : Input[Field] extends Upper ? [
-            Lower
-        ] extends [Input[Field]] ? Field : never : never;
-    }[keyof Input];
-}
-
-declare namespace $ {
-    function $mol_log3_web_make(level: $mol_type_keys_extract<Console, Function>, color: string): (this: $, event: $mol_log3_event<{}>) => () => void;
 }
 
 declare namespace $ {
@@ -34772,6 +34784,7 @@ declare namespace $.$$ {
             destructor: () => void;
         };
         detector(): BarcodeDetectorLike | null;
+        /** Fallback decoder for browsers without BarcodeDetector (iOS): vendored $bog_call_jsqr sets global */
         jsqr(): ((data: Uint8ClampedArray, width: number, height: number) => null | {
             data: string;
         }) | null;
@@ -35349,30 +35362,136 @@ declare namespace $ {
 }
 
 declare namespace $ {
-    type $bog_call_state = 'idle' | 'gathering' | 'awaiting_answer' | 'awaiting_offer' | 'connecting' | 'connected' | 'failed' | 'closed';
-    type $bog_call_quality = 'good' | 'degraded' | 'lost';
-    class $bog_call_peer extends $mol_object {
-        _pc: RTCPeerConnection | null;
+    /** Communication link with other peer */
+    class $giper_baza_port extends $mol_object2 {
+        faces: $mol_wire_dict<string, $giper_baza_face_map>;
+        send(pack: $giper_baza_pack): void;
+    }
+}
+
+declare namespace $ {
+    /** Communication port over WebRTC DataChannel */
+    class $giper_baza_port_webrtc extends $mol_rest_port {
+        /** ICE servers used to establish direct connections */
+        static ice: RTCIceServer[];
+        channel: RTCDataChannel;
+        send_nil(): void;
+        send_bin(data: Uint8Array<ArrayBuffer>): void;
+        send_text(data: string): void;
+    }
+    /**
+     * Offerer side: makes connection with outgoing DataChannel.
+     * Connection and channel are ready synchronously,
+     * sdp resolves with complete local offer when ICE gathering finishes.
+     */
+    function $giper_baza_port_webrtc_propose(): {
+        rtc: RTCPeerConnection;
+        channel: RTCDataChannel;
+        sdp: Promise<string>;
+    };
+    /**
+     * Answerer side: makes connection for the remote offer.
+     * channel resolves with incoming DataChannel,
+     * sdp resolves with complete local answer when ICE gathering finishes.
+     */
+    function $giper_baza_port_webrtc_accept(offer: string): {
+        rtc: RTCPeerConnection;
+        channel: Promise<RTCDataChannel>;
+        sdp: Promise<string>;
+    };
+    /** Offerer side: applies the remote answer */
+    function $giper_baza_port_webrtc_finish(rtc: RTCPeerConnection, answer: string): Promise<void>;
+    /** Wraps DataChannel into Port and wires its events to given handlers */
+    function $giper_baza_port_webrtc_bind(channel: RTCDataChannel, income: (port: $giper_baza_port_webrtc, data: Uint8Array<ArrayBuffer>) => void, open: (port: $giper_baza_port_webrtc) => void, close: (port: $giper_baza_port_webrtc) => void): $giper_baza_port_webrtc;
+}
+
+declare namespace $ {
+    /**
+     * Manual P2P handshake for the cases when no master is reachable
+     * (offline LAN, hotspot without internet).
+     * Offer and answer are just strings - pass them any way you like:
+     * QR code, messenger, AirDrop, clipboard.
+     */
+    class $giper_baza_hand extends $mol_object {
+        yard(): $giper_baza_yard;
+        /** Established direct port, reactive */
+        port(next?: $giper_baza_port_webrtc | null): $giper_baza_port_webrtc | null;
+        _attempt: null | ReturnType<typeof $giper_baza_port_webrtc_propose>;
+        /** Side A: current connection attempt. Call reset() to start over. */
+        attempt(): {
+            rtc: RTCPeerConnection;
+            channel: RTCDataChannel;
+            sdp: Promise<string>;
+        };
+        /** Side A: resolves with offer string for the mate */
+        proposal(): Promise<string>;
+        _greetings: Map<string, {
+            rtc: RTCPeerConnection;
+            channel: Promise<RTCDataChannel>;
+            sdp: Promise<string>;
+        }>;
+        /** Side B: accepts remote offer, resolves with answer string for the mate */
+        answer(offer: string): Promise<string>;
+        /** Side A: applies remote answer, channel opens after that */
+        finish(answer: string): Promise<void>;
+        /** Drops all connections to start over */
+        reset(): void;
+        destructor(): void;
+        bind(rtc: RTCPeerConnection, channel: RTCDataChannel): void;
+        income(port: $mol_rest_port, data: Uint8Array<ArrayBuffer>): void;
+        port_add(port: $giper_baza_port_webrtc): void;
+        port_drop(port: $giper_baza_port_webrtc): void;
+    }
+}
+
+declare namespace $ {
+    export type $bog_call_state = 'idle' | 'gathering' | 'awaiting_answer' | 'awaiting_offer' | 'connecting' | 'connected' | 'failed' | 'closed';
+    export type $bog_call_quality = 'good' | 'degraded' | 'lost';
+    type $bog_call_signal_msg = {
+        t: 'o' | 'a';
+        s: string;
+    };
+    /**
+     * Звонок поверх P2P-стека Гипер Базы:
+     * - соединение и QR-строки делает $giper_baza_hand (порт уходит в yard.peers,
+     *   так что общие ленды синкаются прямо по каналу звонка);
+     * - звук добавляется после коннекта через renegotiation по отдельному
+     *   DataChannel 'bog_call' (его создаёт гость, хост шлёт голосовой offer).
+     */
+    export class $bog_call_peer extends $mol_object {
+        _hand: $giper_baza_hand | null;
+        _rtc: RTCPeerConnection | null;
+        _signal: RTCDataChannel | null;
         _local: MediaStream | null;
         _remote_audio: HTMLAudioElement | null;
+        hand(): $giper_baza_hand;
         state(next?: $bog_call_state): $bog_call_state;
         connection_state(next?: string): string;
         ice_state(next?: string): string;
         muted(next?: boolean): boolean;
         quality(next?: $bog_call_quality): $bog_call_quality;
         error(next?: string): string;
-        pc(): RTCPeerConnection;
+        _wire(rtc: RTCPeerConnection): void;
+        /** Хост: hand делает offer-строку, голосовой канал ждём от гостя */
+        create_offer(): Promise<string>;
+        /** Гость: hand отвечает на offer, голосовой канал создаём сами */
+        accept_offer(sdp: string): Promise<string>;
+        /** Хост: применяем answer гостя, дальше канал откроется сам */
+        accept_answer(sdp: string): Promise<void>;
+        _signal_open(channel: RTCDataChannel, role: 'host' | 'guest'): void;
+        /** Хост: докидываем звук в установленное соединение */
+        _voice_offer(): Promise<void>;
+        _signal_income(msg: $bog_call_signal_msg): Promise<void>;
+        _signal_send(msg: $bog_call_signal_msg): void;
         _attach_remote(stream: MediaStream): void;
         ensure_mic(): Promise<MediaStream>;
         _wait_ice(): Promise<void>;
-        create_offer(): Promise<string>;
-        accept_offer(sdp: string): Promise<string>;
-        accept_answer(sdp: string): Promise<void>;
         restart_ice(): void;
         monitor_quality(): $bog_call_quality;
         hangup(): void;
         destructor(): void;
     }
+    export {};
 }
 
 declare namespace $ {
@@ -36188,13 +36307,15 @@ declare namespace $ {
         d: string;
     };
     class $bog_call_codec extends $mol_object2 {
-        static encode(payload: $bog_call_payload): string[];
+        static deflate(text: string): Promise<Uint8Array>;
+        static inflate(bytes: Uint8Array): Promise<string>;
+        static encode(payload: $bog_call_payload): Promise<string[]>;
         static parse_frame(text: string): {
             index: number;
             total: number;
             chunk: string;
         } | null;
-        static decode(frames: string[]): $bog_call_payload;
+        static decode(frames: string[]): Promise<$bog_call_payload>;
         static filter_sdp(sdp: string): string;
         static b64u_encode(bytes: Uint8Array): string;
         static b64u_decode(s: string): Uint8Array;
@@ -36324,7 +36445,7 @@ declare namespace $ {
 	
 }
 
-//# sourceMappingURL=host.view.tree.d.ts.map
+//# sourceMappingURL=host.web.view.tree.d.ts.map
 declare namespace $.$$ {
     class $bog_call_host extends $.$bog_call_host {
         _frames: Map<number, string>;
@@ -36490,7 +36611,7 @@ declare namespace $ {
 	
 }
 
-//# sourceMappingURL=guest.view.tree.d.ts.map
+//# sourceMappingURL=guest.web.view.tree.d.ts.map
 declare namespace $.$$ {
     class $bog_call_guest extends $.$bog_call_guest {
         _frames: Map<number, string>;
@@ -36540,22 +36661,27 @@ declare namespace $ {
 		,
 		ReturnType< $mol_view['sub'] >
 	>
-	type $mol_check__title_bog_call_active_5 = $mol_type_enforce<
-		string
+	type $mol_view__sub_bog_call_active_5 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_check__title_bog_call_active_6 = $mol_type_enforce<
+		ReturnType< $bog_call_active['mute_label'] >
 		,
 		ReturnType< $mol_check['title'] >
 	>
-	type $mol_check__checked_bog_call_active_6 = $mol_type_enforce<
+	type $mol_check__checked_bog_call_active_7 = $mol_type_enforce<
 		ReturnType< $bog_call_active['mute'] >
 		,
 		ReturnType< $mol_check['checked'] >
 	>
-	type $mol_button_major__click_bog_call_active_7 = $mol_type_enforce<
+	type $mol_button_major__click_bog_call_active_8 = $mol_type_enforce<
 		ReturnType< $bog_call_active['hangup'] >
 		,
 		ReturnType< $mol_button_major['click'] >
 	>
-	type $mol_button_major__sub_bog_call_active_8 = $mol_type_enforce<
+	type $mol_button_major__sub_bog_call_active_9 = $mol_type_enforce<
 		readonly(any)[]
 		,
 		ReturnType< $mol_button_major['sub'] >
@@ -36567,6 +36693,9 @@ declare namespace $ {
 		Indicator( ): $mol_view
 		Status( ): $mol_view
 		Quality( ): $mol_view
+		peer_error( ): string
+		Error( ): $mol_view
+		mute_label( ): string
 		Mute( ): $mol_check
 		hangup_label( ): string
 		Hangup( ): $mol_button_major
@@ -36582,7 +36711,7 @@ declare namespace $ {
 	
 }
 
-//# sourceMappingURL=active.view.tree.d.ts.map
+//# sourceMappingURL=active.web.view.tree.d.ts.map
 declare namespace $.$$ {
     class $bog_call_active extends $.$bog_call_active {
         _wake: any;
@@ -36590,6 +36719,8 @@ declare namespace $.$$ {
         quality(): string;
         connection_label(): string;
         quality_label(): string;
+        peer_error(): string;
+        mute_label(): string;
         hangup(next?: any): any;
         wake(): null;
         _release_wake(): void;
@@ -38499,10 +38630,14 @@ declare namespace $ {
 		ReturnType< $mol_view['sub'] >
 	>
 	export class $mol_form_field extends $mol_labeler {
+		state( ): string | null
 		name( ): string
 		bid( ): string
 		Bid( ): $mol_view
 		control( ): any
+		attr( ): ({ 
+			'mol_form_field_state': ReturnType< $mol_form_field['state'] >,
+		})  & ReturnType< $mol_labeler['attr'] >
 		bids( ): readonly(string)[]
 		label( ): readonly(any)[]
 		content( ): readonly(any)[]
@@ -38516,6 +38651,7 @@ declare namespace $.$$ {
      * @see https://mol.hyoo.ru/#!section=demos/demo=mol_form_demo
      */
     class $mol_form_field extends $.$mol_form_field {
+        state(): string | null;
         bid(): string;
     }
 }
@@ -41363,18 +41499,6 @@ declare namespace $.$$ {
 }
 
 declare namespace $ {
-    function $mol_offline(): void;
-}
-
-declare namespace $ {
-    /** Installs service worker proxy, which caches all requests and respond from cache on http errors. */
-    function $mol_offline_web(): void;
-}
-
-declare namespace $ {
-}
-
-declare namespace $ {
 
 	type $mol_link_source__uri_bog_call_app_1 = $mol_type_enforce<
 		string
@@ -41491,7 +41615,7 @@ declare namespace $ {
 	
 }
 
-//# sourceMappingURL=app.view.tree.d.ts.map
+//# sourceMappingURL=app.web.view.tree.d.ts.map
 declare namespace $.$$ {
     class $bog_call_app extends $.$bog_call_app {
         _peer: $bog_call_peer | null;

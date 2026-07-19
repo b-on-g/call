@@ -30942,6 +30942,8 @@ var $;
                 video: false,
             });
             this._local = stream;
+            for (const track of stream.getAudioTracks())
+                track.enabled = !this.muted();
             const rtc = this._rtc;
             if (rtc) {
                 for (const track of stream.getAudioTracks()) {
@@ -31310,8 +31312,9 @@ var $;
                         return;
                     }
                     $mol_wire_sync(peer).accept_answer(payload.s);
-                    store.remember(payload.d, payload.n);
                     this.on_connected(true);
+                    // запись в "недавние" создаёт ленд (PoW) — фоном, переход к звонку её не ждёт
+                    $mol_wire_async(store).remember(payload.d, payload.n);
                 }
                 catch (err) {
                     // суспензии wire — наружу (иначе на экран уедет "[object ...<#>]"), на экран только реальные ошибки
@@ -31682,9 +31685,10 @@ var $;
                         n: store.name(),
                         d: store.device_id(),
                     });
-                    store.remember(offer.d, offer.n);
                     this.frames_answer(frames);
                     this.answer_ready(true);
+                    // запись в "недавние" создаёт ленд (PoW) — фоном, показ QR её не ждёт
+                    $mol_wire_async(store).remember(offer.d, offer.n);
                     $mol_wire_async(this).await_connection();
                 }
                 catch (err) {
@@ -31827,9 +31831,12 @@ var $;
 			(obj.sub) = () => ([(this.peer_error())]);
 			return obj;
 		}
+		mute_label(){
+			return "Выключить микрофон";
+		}
 		Mute(){
 			const obj = new this.$.$mol_check();
-			(obj.title) = () => ((this.$.$mol_locale.text("$bog_call_active_Mute_title")));
+			(obj.title) = () => ((this.mute_label()));
 			(obj.checked) = (next) => ((this.mute(next)));
 			return obj;
 		}
@@ -31945,6 +31952,9 @@ var $;
                 const peer = this.peer();
                 return peer?.error() ?? '';
             }
+            mute_label() {
+                return this.mute() ? '🔇 Микрофон выключен — включить' : '🎙 Микрофон включён — выключить';
+            }
             hangup(next) {
                 if (next === undefined)
                     return null;
@@ -31989,6 +31999,9 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_call_active.prototype, "peer_error", null);
+        __decorate([
+            $mol_mem
+        ], $bog_call_active.prototype, "mute_label", null);
         __decorate([
             $mol_mem
         ], $bog_call_active.prototype, "wake", null);

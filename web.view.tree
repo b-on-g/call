@@ -892,8 +892,11 @@ $bog_call_active $mol_view
 		<= Quality $mol_view
 			sub /
 				<= quality_label
+		<= Error $mol_view
+			sub /
+				<= peer_error \
 		<= Mute $mol_check
-			title @ \Микрофон выключен
+			title <= mute_label \Выключить микрофон
 			checked? <=> mute?
 		<= Hangup $mol_button_major
 			click? <=> hangup?
@@ -1366,6 +1369,9 @@ $mol_labeler $mol_list
 			sub <= content /
 
 $mol_form_field $mol_labeler
+	attr *
+		^
+		mol_form_field_state <= state null string
 	bids /string
 	label /
 		<= name \
