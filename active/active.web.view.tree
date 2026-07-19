@@ -20,8 +20,11 @@ $bog_call_active $mol_view
 		<= Quality $mol_view
 			sub /
 				<= quality_label
+		<= Error $mol_view
+			sub /
+				<= peer_error \
 		<= Mute $mol_check
-			title @ \Микрофон выключен
+			title <= mute_label \Выключить микрофон
 			checked? <=> mute?
 		<= Hangup $mol_button_major
 			click? <=> hangup?

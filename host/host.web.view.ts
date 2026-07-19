@@ -30,13 +30,13 @@ namespace $.$$ {
 			const store = this.store() as $bog_call_store | null
 			if (!peer || !store) return []
 			const sdp = $mol_wire_sync(peer).create_offer() as unknown as string
-			return $bog_call_codec.encode({
+			return $mol_wire_sync($bog_call_codec).encode({
 				v: 1,
 				t: 'offer',
 				s: sdp,
 				n: store.name(),
 				d: store.device_id(),
-			})
+			}) as unknown as string[]
 		}
 
 		@$mol_mem
@@ -90,16 +90,20 @@ namespace $.$$ {
 			if (!peer || !store) return
 			try {
 				const all = Array.from(this._frames.values())
-				const payload = $bog_call_codec.decode(all)
+				const payload = $mol_wire_sync($bog_call_codec).decode(all) as unknown as $bog_call_payload
 				if (payload.t !== 'answer') {
 					this.scan_error('Ожидался answer')
 					return
 				}
 				$mol_wire_sync(peer).accept_answer(payload.s)
-				store.remember(payload.d, payload.n)
 				this.on_connected(true)
+				// запись в "недавние" создаёт ленд (PoW) — фоном, переход к звонку её не ждёт
+				$mol_wire_async(store).remember(payload.d, payload.n)
 			} catch (err) {
-				this.scan_error(String((err as Error).message ?? err))
+				// суспензии wire — наружу (иначе на экран уедет "[object ...<#>]"), на экран только реальные ошибки
+				if ($mol_fail_catch(err)) {
+					this.scan_error(String((err as Error).message ?? err))
+				}
 			}
 		}
 

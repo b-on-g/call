@@ -47,6 +47,17 @@ namespace $.$$ {
 			return 'Связь оборвана. Попробуйте новый QR-обмен.'
 		}
 
+		@$mol_mem
+		peer_error(): string {
+			const peer = this.peer() as $bog_call_peer | null
+			return peer?.error() ?? ''
+		}
+
+		@$mol_mem
+		mute_label(): string {
+			return this.mute() ? '🔇 Микрофон выключен — включить' : '🎙 Микрофон включён — выключить'
+		}
+
 		hangup(next?: any): any {
 			if (next === undefined) return null
 			const peer = this.peer() as $bog_call_peer | null

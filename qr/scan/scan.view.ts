@@ -17,11 +17,10 @@ namespace $.$$ {
 
 		@$mol_mem
 		stream() {
-			const promise = navigator.mediaDevices.getUserMedia({
+			const stream = $mol_wire_sync(navigator.mediaDevices).getUserMedia({
 				video: { facingMode: { ideal: 'environment' } },
 				audio: false,
 			})
-			const stream = $mol_wire_sync(promise as any) as unknown as MediaStream
 			return Object.assign(stream, {
 				destructor: () => stream.getTracks().forEach(t => t.stop()),
 			})
@@ -38,15 +37,15 @@ namespace $.$$ {
 			}
 		}
 
+		/** Fallback decoder for browsers without BarcodeDetector (iOS): vendored $bog_call_jsqr sets global */
 		@$mol_mem
 		jsqr() {
 			if (this.detector()) return null
-			const lib = require('jsqr') as { default?: any } | any
-			return (lib.default ?? lib) as (
+			return ((globalThis as any).jsQR ?? null) as null | ((
 				data: Uint8ClampedArray,
 				width: number,
 				height: number,
-			) => null | { data: string }
+			) => null | { data: string })
 		}
 
 		Video(): $mol_view {

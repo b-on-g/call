@@ -91,25 +91,29 @@ namespace $.$$ {
 			if (!peer || !store) return
 			try {
 				const all = Array.from(this._frames.values())
-				const offer = $bog_call_codec.decode(all)
+				const offer = $mol_wire_sync($bog_call_codec).decode(all) as unknown as $bog_call_payload
 				if (offer.t !== 'offer') {
 					this.scan_error('Ожидался offer')
 					return
 				}
 				const sdp = $mol_wire_sync(peer).accept_offer(offer.s) as unknown as string
-				const frames = $bog_call_codec.encode({
+				const frames = $mol_wire_sync($bog_call_codec).encode({
 					v: 1,
 					t: 'answer',
 					s: sdp,
 					n: store.name(),
 					d: store.device_id(),
-				})
-				store.remember(offer.d, offer.n)
+				}) as unknown as string[]
 				this.frames_answer(frames)
 				this.answer_ready(true)
+				// запись в "недавние" создаёт ленд (PoW) — фоном, показ QR её не ждёт
+				$mol_wire_async(store).remember(offer.d, offer.n)
 				$mol_wire_async(this).await_connection()
 			} catch (err) {
-				this.scan_error(String((err as Error).message ?? err))
+				// суспензии wire — наружу (иначе на экран уедет "[object ...<#>]"), на экран только реальные ошибки
+				if ($mol_fail_catch(err)) {
+					this.scan_error(String((err as Error).message ?? err))
+				}
 			}
 		}
 

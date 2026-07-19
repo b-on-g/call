@@ -13,12 +13,24 @@ namespace $ {
 
 	export class $bog_call_codec extends $mol_object2 {
 
-		static encode(payload: $bog_call_payload): string[] {
+		// сжатие нативным CompressionStream: npm-пакеты в web-бандл mam не попадают
+		static async deflate(text: string): Promise<Uint8Array> {
+			const stream = new Blob([text]).stream()
+				.pipeThrough(new CompressionStream('deflate-raw'))
+			return new Uint8Array(await new Response(stream).arrayBuffer())
+		}
+
+		static async inflate(bytes: Uint8Array): Promise<string> {
+			const stream = new Blob([bytes as BlobPart]).stream()
+				.pipeThrough(new DecompressionStream('deflate-raw'))
+			return new Response(stream).text()
+		}
+
+		static async encode(payload: $bog_call_payload): Promise<string[]> {
 			const sdp = $bog_call_codec.filter_sdp(payload.s)
 			const compact: $bog_call_payload = { ...payload, s: sdp }
 			const json = JSON.stringify(compact)
-			const pako = require('pako') as typeof import('pako')
-			const compressed = pako.deflateRaw(json, { level: 9 })
+			const compressed = await $bog_call_codec.deflate(json)
 			const b64 = $bog_call_codec.b64u_encode(compressed)
 			const total = Math.max(1, Math.ceil(b64.length / MAX_PER_FRAME))
 			const frames: string[] = []
@@ -39,7 +51,7 @@ namespace $ {
 			}
 		}
 
-		static decode(frames: string[]): $bog_call_payload {
+		static async decode(frames: string[]): Promise<$bog_call_payload> {
 			const indexed = new Map<number, string>()
 			let total = 0
 			for (const text of frames) {
@@ -56,8 +68,7 @@ namespace $ {
 				b64 += part
 			}
 			const bytes = $bog_call_codec.b64u_decode(b64)
-			const pako = require('pako') as typeof import('pako')
-			const json = pako.inflateRaw(bytes, { toText: true })
+			const json = await $bog_call_codec.inflate(bytes)
 			const payload = JSON.parse(json) as $bog_call_payload
 			if (payload.v !== 1) throw new Error('Unsupported payload version')
 			return payload
