@@ -31314,7 +31314,10 @@ var $;
                     this.on_connected(true);
                 }
                 catch (err) {
-                    this.scan_error(String(err.message ?? err));
+                    // суспензии wire — наружу (иначе на экран уедет "[object ...<#>]"), на экран только реальные ошибки
+                    if ($mol_fail_catch(err)) {
+                        this.scan_error(String(err.message ?? err));
+                    }
                 }
             }
         }
@@ -31685,7 +31688,10 @@ var $;
                     $mol_wire_async(this).await_connection();
                 }
                 catch (err) {
-                    this.scan_error(String(err.message ?? err));
+                    // суспензии wire — наружу (иначе на экран уедет "[object ...<#>]"), на экран только реальные ошибки
+                    if ($mol_fail_catch(err)) {
+                        this.scan_error(String(err.message ?? err));
+                    }
                 }
             }
             await_connection() {
@@ -31813,6 +31819,14 @@ var $;
 			(obj.sub) = () => ([(this.quality_label())]);
 			return obj;
 		}
+		peer_error(){
+			return "";
+		}
+		Error(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.peer_error())]);
+			return obj;
+		}
 		Mute(){
 			const obj = new this.$.$mol_check();
 			(obj.title) = () => ((this.$.$mol_locale.text("$bog_call_active_Mute_title")));
@@ -31857,6 +31871,7 @@ var $;
 				(this.Indicator()), 
 				(this.Status()), 
 				(this.Quality()), 
+				(this.Error()), 
 				(this.Mute()), 
 				(this.Hangup())
 			];
@@ -31865,6 +31880,7 @@ var $;
 	($mol_mem(($.$bog_call_active.prototype), "Indicator"));
 	($mol_mem(($.$bog_call_active.prototype), "Status"));
 	($mol_mem(($.$bog_call_active.prototype), "Quality"));
+	($mol_mem(($.$bog_call_active.prototype), "Error"));
 	($mol_mem(($.$bog_call_active.prototype), "Mute"));
 	($mol_mem(($.$bog_call_active.prototype), "Hangup"));
 	($mol_mem(($.$bog_call_active.prototype), "on_hangup"));
@@ -31925,6 +31941,10 @@ var $;
                     return 'Слабый сигнал';
                 return 'Связь оборвана. Попробуйте новый QR-обмен.';
             }
+            peer_error() {
+                const peer = this.peer();
+                return peer?.error() ?? '';
+            }
             hangup(next) {
                 if (next === undefined)
                     return null;
@@ -31966,6 +31986,9 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_call_active.prototype, "quality_label", null);
+        __decorate([
+            $mol_mem
+        ], $bog_call_active.prototype, "peer_error", null);
         __decorate([
             $mol_mem
         ], $bog_call_active.prototype, "wake", null);
